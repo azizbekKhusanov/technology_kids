@@ -32,6 +32,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             mute: false,
             showControls: true,
             enableJavaScript: true,
+            origin: 'https://www.youtube.com',
           ),
         );
       }

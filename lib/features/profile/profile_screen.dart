@@ -49,10 +49,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final artworksSnapshot = await FirebaseFirestore.instance
           .collection('artworks')
           .where('userId', isEqualTo: currentUser!.uid)
-          .orderBy('createdAt', descending: true)
           .get();
 
       myArtworks = artworksSnapshot.docs;
+      myArtworks.sort((a, b) {
+        final dataA = a.data() as Map<String, dynamic>;
+        final dataB = b.data() as Map<String, dynamic>;
+        final t1 = dataA['createdAt'] as Timestamp?;
+        final t2 = dataB['createdAt'] as Timestamp?;
+        if (t1 == null && t2 == null) return 0;
+        if (t1 == null) return 1;
+        if (t2 == null) return -1;
+        return t2.compareTo(t1);
+      });
       
       totalLikes = 0;
       for(var work in myArtworks) {
@@ -146,6 +155,158 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showAboutAppDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF3E8FF), // Light purple
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: Color(0xFF7F77DD), // Purple
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Texno Bilim",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const Text(
+                "Versiya 1.0.0",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Texno Bilim — boshlang'ich sinf (1-4 sinflar) o'quvchilari uchun texnologiya fanini qiziqarli, o'yinlar va amaliy topshiriqlar orqali o'rganishga mo'ljallangan mobil ilovadir. ✨",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildFeatureRow(Icons.menu_book_rounded, "Qiziqarli interaktiv darslar", const Color(0xFF7F77DD)),
+              _buildFeatureRow(Icons.extension_rounded, "Bilimni mustahkamlovchi o'yinlar", const Color(0xFF1D9E75)),
+              _buildFeatureRow(Icons.construction_rounded, "Virtual rasm chizish ustaxonasi", const Color(0xFFD85A30)),
+              _buildFeatureRow(Icons.emoji_events_rounded, "Nishonlar va faollik darajalari", const Color(0xFFBA7517)),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7F77DD),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text(
+                    "Tushunarli",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureRow(IconData icon, String text, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  List<Widget> _getBadgesList(int totalXP, int completedLessons) {
+    return [
+      _build1FitBadge(title: "Ilk Qadam", current: myArtworks.length, target: 1, icon: Icons.rocket_launch, colors: [const Color(0xFF8E2DE2), const Color(0xFF4A00E0)]),
+      _build1FitBadge(title: "Faol O'quvchi", current: completedLessons, target: 5, icon: Icons.school_rounded, colors: [const Color(0xFF36D1DC), const Color(0xFF5B86E5)]),
+      _build1FitBadge(title: "Mashhurlik", current: totalLikes, target: 5, icon: Icons.star_rounded, colors: [const Color(0xFFFFD700), const Color(0xFFF7971E)]),
+      _build1FitBadge(title: "Kashfiyotchi", current: totalXP, target: 200, icon: Icons.explore_rounded, colors: [const Color(0xFF1D976C), const Color(0xFF93F9B9)]),
+      _build1FitBadge(title: "Rassom", current: myArtworks.length, target: 3, icon: Icons.palette, colors: [const Color(0xFFFF416C), const Color(0xFFFF4B2B)]),
+      _build1FitBadge(title: "Bilimdon", current: completedLessons, target: 15, icon: Icons.emoji_events_rounded, colors: [const Color(0xFFF09819), const Color(0xFFEDDE5D)]),
+      _build1FitBadge(title: "Oltin Qo'llar", current: myArtworks.length, target: 10, icon: Icons.back_hand, colors: [const Color(0xFF11998e), const Color(0xFF38ef7d)]),
+      _build1FitBadge(title: "Super Yulduz", current: totalLikes, target: 20, icon: Icons.local_fire_department, colors: [const Color(0xFFf12711), const Color(0xFFf5af19)]),
+      _build1FitBadge(title: "Daho", current: totalXP, target: 500, icon: Icons.psychology, colors: [const Color(0xFF00c6ff), const Color(0xFF0072ff)]),
+      _build1FitBadge(title: "Tashabbuskor", current: totalXP, target: 1000, icon: Icons.bolt, colors: [const Color(0xFFf857a6), const Color(0xFFff5858)]),
+    ];
+  }
+
+  void _showAllBadges(BuildContext context, int totalXP, int completedLessons) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            children: [
+              Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+              const SizedBox(height: 16),
+              const Text("Barcha Yutuqlar", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const SizedBox(height: 20),
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.68,
+                  children: _getBadgesList(totalXP, completedLessons),
+                )
+              )
+            ],
+          ),
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -159,16 +320,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // --- GAMEIFICATION HISOB-KITOBI ---
     // Har bir rasm uchun 50 XP, Har layk uchun 10 XP.
-    int totalXP = (myArtworks.length * 50) + (totalLikes * 10);
+    int dbXP = userData?['xp'] ?? 0;
+    int totalXP = dbXP + (myArtworks.length * 50) + (totalLikes * 10);
     // Masalan Har 100 XP bitta bosqich (Level) beradi.
     int currentLevel = (totalXP / 100).floor() + 1;
     // Keyingi bosqichgacha to'lish foizi
     double levelProgress = (totalXP % 100) / 100.0;
     
     // Yutuqlar hisobi
-    bool badge1Unlocked = myArtworks.isNotEmpty; // Ilk Qadam
-    bool badge2Unlocked = totalLikes >= 5;       // Yulduzcha
-    bool badge3Unlocked = myArtworks.length >= 3; // Haqiqiy Rassom
+    int completedLessons = 0;
+    if (userData?['completedLessons'] != null) {
+      completedLessons = (userData?['completedLessons'] as List).length;
+    } else {
+      completedLessons = (myArtworks.length + (totalXP / 30).floor()).clamp(1, 30);
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -250,32 +415,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
               child: Row(
                 children: [
-                  _buildStatCard(totalLikes.toString(), "Yulduzlar", Icons.star_rounded, Colors.orange),
+                  _buildStatCard(totalLikes.toString(), "Layklar", Icons.favorite_rounded, Colors.red),
                   const SizedBox(width: 10),
                   _buildStatCard(myArtworks.length.toString(), "Ijod", Icons.brush_rounded, AppTheme.accentColor),
                   const SizedBox(width: 10),
-                  _buildStatCard("$totalXP", "Ball", Icons.bolt_rounded, Colors.blue),
+                  _buildStatCard("$totalXP", "Ball", Icons.star_rounded, Colors.amber),
                 ],
               ),
             ),
           ),
 
-          // 2.5 NISHONLAR (BADGES)
+          // 2.5 NISHONLAR (BADGES) - 1Fit dizayni asosida (Oq fon)
           SliverToBoxAdapter(
-             child: Padding(
-               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+             child: Container(
+               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+               padding: const EdgeInsets.all(20),
+               decoration: BoxDecoration(
+                 color: Colors.white,
+                 borderRadius: BorderRadius.circular(24),
+                 boxShadow: [
+                   BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))
+                 ]
+               ),
                child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                 crossAxisAlignment: CrossAxisAlignment.start,
                  children: [
-                    const Text("Mening Nishonlarim 🏅", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildBadge("Ilk Qadam", Icons.rocket_launch, Colors.purple, badge1Unlocked),
-                        _buildBadge("Mashxurlik", Icons.verified, Colors.blue, badge2Unlocked),
-                        _buildBadge("Ijodkor", Icons.palette, Colors.pink, badge3Unlocked),
+                        const Text("Yutuqlar", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        GestureDetector(
+                          onTap: () => _showAllBadges(context, totalXP, completedLessons),
+                          child: Row(
+                            children: [
+                              Text("Barchasi ", style: TextStyle(color: Colors.blue.shade600, fontWeight: FontWeight.w600, fontSize: 14)),
+                              Icon(Icons.chevron_right, color: Colors.blue.shade600, size: 20),
+                            ],
+                          ),
+                        )
                       ],
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 140,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: _getBadgesList(totalXP, completedLessons).map((badgeWidget) => Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: badgeWidget,
+                        )).toList(),
+                      )
                     )
                  ],
                ),
@@ -375,7 +564,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const Text("Sozlamalar", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   _buildMenuTile(context, "Qahramonni (Avatarni) O'zgartirish", Icons.pets, Colors.indigo, _showAvatarPicker),
-                  _buildMenuTile(context, "Ilova Haqida", Icons.info_outline, Colors.grey, (){}),
+                  _buildMenuTile(context, "Ilova Haqida", Icons.info_outline, Colors.grey, _showAboutAppDialog),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
@@ -401,24 +590,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildBadge(String title, IconData icon, Color color, bool unlocked) {
-     return Column(
-        children: [
-           Container(
-             padding: const EdgeInsets.all(16),
-             decoration: BoxDecoration(
-               color: unlocked ? color.withOpacity(0.15) : Colors.grey.shade200,
-               shape: BoxShape.circle,
-               border: Border.all(color: unlocked ? color : Colors.grey.shade300, width: 3)
-             ),
-             child: Icon(unlocked ? icon : Icons.lock_outline, color: unlocked ? color : Colors.grey.shade400, size: 30),
-           ),
-           const SizedBox(height: 8),
-           Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: unlocked ? Colors.black87 : Colors.grey)),
-           if(!unlocked) 
-             Text("Yopiq", style: TextStyle(color: Colors.grey.shade500, fontSize: 10))
-        ],
-     );
+  Widget _build1FitBadge({
+    required String title,
+    required int current,
+    required int target,
+    required IconData icon,
+    required List<Color> colors,
+  }) {
+    bool unlocked = current >= target;
+    double progress = current / target;
+    if (progress > 1.0) progress = 1.0;
+
+    return Column(
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: unlocked 
+              ? LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight)
+              : null,
+            color: unlocked ? null : Colors.grey.shade100,
+            border: Border.all(
+              color: unlocked ? Colors.amber.withOpacity(0.8) : Colors.grey.shade300, 
+              width: unlocked ? 3 : 2
+            ),
+            boxShadow: unlocked ? [
+              BoxShadow(color: colors[0].withOpacity(0.4), blurRadius: 12, spreadRadius: 2)
+            ] : null,
+          ),
+          child: Center(
+            child: Icon(
+              icon, 
+              color: unlocked ? Colors.white : Colors.grey.shade400, 
+              size: 40
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: 90,
+          child: Text(
+            title, 
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: TextStyle(
+              fontWeight: FontWeight.bold, 
+              fontSize: 12, 
+              color: unlocked ? Colors.black87 : Colors.grey.shade600
+            )
+          ),
+        ),
+        if (!unlocked) ...[
+          const SizedBox(height: 4),
+          Text(
+            "$current / $target", 
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 10, fontWeight: FontWeight.bold)
+          )
+        ]
+      ],
+    );
   }
 
   Widget _buildStatCard(String value, String label, IconData icon, Color color) {

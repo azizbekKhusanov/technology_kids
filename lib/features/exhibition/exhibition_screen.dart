@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:convert';
 import '../workshop/drawing_models.dart';
 
@@ -21,11 +22,21 @@ class _ExhibitionScreenState extends State<ExhibitionScreen> {
     currentUserId = FirebaseAuth.instance.currentUser?.uid;
   }
 
-  void _likeArtwork(String docId, int currentLikes) async {
+  void _likeArtwork(String docId, List<dynamic> likedBy) async {
+    if (currentUserId == null) return;
     try {
-      await FirebaseFirestore.instance.collection('artworks').doc(docId).update({
-        'likes': FieldValue.increment(1)
-      });
+      final docRef = FirebaseFirestore.instance.collection('artworks').doc(docId);
+      if (likedBy.contains(currentUserId)) {
+        await docRef.update({
+          'likes': FieldValue.increment(-1),
+          'likedBy': FieldValue.arrayRemove([currentUserId])
+        });
+      } else {
+        await docRef.update({
+          'likes': FieldValue.increment(1),
+          'likedBy': FieldValue.arrayUnion([currentUserId])
+        });
+      }
     } catch(e) {
       debugPrint("Liking failed: $e");
     }
@@ -81,10 +92,11 @@ class _ExhibitionScreenState extends State<ExhibitionScreen> {
   Widget _buildArtworkCard(QueryDocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     
-    // Muallif info
     String author = data['userName'] ?? "Noma'lum";
     int grade = data['grade'] ?? 1;
     int likes = data['likes'] ?? 0;
+    List<dynamic> likedBy = data['likedBy'] ?? [];
+    bool isLiked = currentUserId != null && likedBy.contains(currentUserId);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
@@ -142,14 +154,19 @@ class _ExhibitionScreenState extends State<ExhibitionScreen> {
             child: Row(
               children: [
                 ActionChip(
-                  avatar: const Icon(Icons.star_rounded, color: Colors.orange),
+                  avatar: Icon(isLiked ? Icons.star_rounded : Icons.star_border_rounded, color: Colors.orange),
                   label: Text("$likes ta Yulduzcha", style: const TextStyle(fontWeight: FontWeight.bold)),
-                  backgroundColor: Colors.orange.shade50,
+                  backgroundColor: isLiked ? Colors.orange.shade100 : Colors.orange.shade50,
                   side: BorderSide.none,
-                  onPressed: () => _likeArtwork(doc.id, likes),
+                  onPressed: () => _likeArtwork(doc.id, likedBy),
                 ),
                 const Spacer(),
-                IconButton(icon: const Icon(Icons.share, color: Colors.grey), onPressed: (){}),
+                IconButton(
+                  icon: const Icon(Icons.share, color: Colors.grey), 
+                  onPressed: () {
+                    Share.share("Texno Bilim ilovasida $author ning ajoyib ishlari bilan tanishing! Ilovani hoziroq yuklab oling.");
+                  },
+                ),
               ],
             ),
           )

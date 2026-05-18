@@ -65,13 +65,18 @@ class AdminStudentsTab extends StatelessWidget {
     for (var doc in usersSnapshot.docs) {
       final data = doc.data();
       String uid = doc.id;
-      int xp = 0;
+      
+      int dbXP = data['xp'] ?? 0;
+      int artXP = 0;
       
       if (userStatsMap.containsKey(uid)) {
         final stats = userStatsMap[uid]!;
         // XP formulasi ProfileScreen bilan bir xil: 50 * artworks + 10 * likes
-        xp = (stats.artworksCount * 50) + (stats.totalLikes * 10);
+        artXP = (stats.artworksCount * 50) + (stats.totalLikes * 10);
       }
+
+      int xp = dbXP + artXP;
+      debugPrint("STUDENT IN DB: uid=$uid, username=${data['username']}, xp=${data['xp']}, calculated_xp=$xp");
 
       data['uid'] = uid;
       data['calculated_xp'] = xp;

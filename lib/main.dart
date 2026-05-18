@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'core/app_theme.dart';
 import 'features/auth/login_screen.dart';
-import 'features/home/home_screen.dart';
 import 'features/main/main_screen.dart';
 import 'features/admin/admin_panel_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';

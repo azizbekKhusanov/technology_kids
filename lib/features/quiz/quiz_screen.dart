@@ -31,6 +31,87 @@ class QuizScreen extends StatefulWidget {
 
 class _QuizScreenState extends State<QuizScreen>
     with SingleTickerProviderStateMixin {
+  
+  // Massive database of 15 technology questions for general tests!
+  static const List<QuizQuestion> _generalQuestions = [
+    QuizQuestion(
+      question: "Origami nima?",
+      options: ["Qog'ozni buklash san'ati", "Loydan shakl yasash", "Yog'och o'ymakorligi", "Ip bilan to'qish"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Plastilin bilan ishlashda qaysi asbob ishlatiladi?",
+      options: ["Qaychi", "Loy pichog'i (Stek)", "Igna", "Randa"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Tabiiy materiallar guruhiga nimalar kiradi?",
+      options: ["Plastmassa va oyna", "Quruq barglar va toshlar", "Rangli qog'oz va karton", "Sintetik iplar"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Qog'ozni bir-biriga yopishtirish uchun nima kerak?",
+      options: ["Randa", "Yelim (kley)", "Igna", "Sim"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Tikuvchilikda barmoqni igna sanchilishidan nima himoya qiladi?",
+      options: ["Qaychi", "Angishvona", "Andoza", "Ip"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Yog'och yuzasini silliq qilish uchun nima ishlatiladi?",
+      options: ["Bolg'a", "Randa va sumbada qog'oz", "Pichoq", "Yelim"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Qog'oz birinchi marta qayerda kashf etilgan?",
+      options: ["Qadimgi Xitoyda", "Misrda", "Rimda", "Samarqandda"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Applikatsiya nima?",
+      options: ["Yog'och chopish", "Har xil shakllarni qog'ozga yopishtirish", "Loy pishirish", "Qo'shiq kuylash"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Ignaga ip o'tkazishda qaysi xavfsizlik qoidasiga amal qilinadi?",
+      options: ["Ignani og'izga solmaslik kerak", "Ignani yerga tashlash kerak", "Ignani do'stimizga otish kerak", "Ignasiz tikish kerak"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Plastilindan shakl yasash qanday ataladi?",
+      options: ["Tikish", "Loy ishlari / Plastilin haykaltaroshligi", "Bichish", "Duradgorlik"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Qaychi bilan ishlashda eng muhim qoida nima?",
+      options: ["Uni faqat dasta qismidan ushlab uzatish", "Uni havoda o'ynatish", "Uni og'izga solish", "Uni o'tkir tomoni bilan otish"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Origami san'ati dastlab qaysi mamlakatda keng rivojlangan?",
+      options: ["Yaponiya", "Germaniya", "Angliya", "Braziliya"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Qog'oz va karton o'rtasidagi farq nima?",
+      options: ["Karton qalinroq va qattiqroq", "Qog'oz og'irroq", "Ularning farqi yo'q", "Karton faqat yashil bo'ladi"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Duradgor kim?",
+      options: ["Kiyim tikadigan usta", "Yog'ochdan buyumlar yasaydigan usta", "Rasm chizadigan rassom", "Non yopadigan novvoy"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Yelim bilan ishlagandan keyin nima qilish kerak?",
+      options: ["Qo'lni yuvish va elim qopqog'ini yopish", "Elimni ochiq qoldirish", "Qo'lni kiyimga surtish", "Elimni tatib ko'rish"],
+      correctIndex: 0,
+    ),
+  ];
+
+  List<QuizQuestion> _questionsList = [];
   int _currentQuestion = 0;
   int? _selectedAnswer;
   bool _answered = false;
@@ -44,6 +125,7 @@ class _QuizScreenState extends State<QuizScreen>
   @override
   void initState() {
     super.initState();
+    _loadQuestions();
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -55,27 +137,40 @@ class _QuizScreenState extends State<QuizScreen>
     _animController.forward();
   }
 
+  void _loadQuestions() {
+    if (widget.lessonTitle == "Texnologiya Asoslari") {
+      final List<QuizQuestion> pool = List<QuizQuestion>.from(_generalQuestions)..shuffle();
+      _questionsList = pool.take(5).toList();
+    } else {
+      _questionsList = List<QuizQuestion>.from(widget.questions)..shuffle();
+    }
+  }
+
   void _selectAnswer(int index) {
     if (_answered) return;
     setState(() {
       _selectedAnswer = index;
       _answered = true;
-      if (index == widget.questions[_currentQuestion].correctIndex) {
+      if (index == _questionsList[_currentQuestion].correctIndex) {
         _score++;
       }
     });
 
     Future.delayed(const Duration(milliseconds: 1200), () {
-      if (_currentQuestion < widget.questions.length - 1) {
-        setState(() {
-          _currentQuestion++;
-          _selectedAnswer = null;
-          _answered = false;
-        });
-        _animController.reset();
-        _animController.forward();
+      if (_currentQuestion < _questionsList.length - 1) {
+        if (mounted) {
+          setState(() {
+            _currentQuestion++;
+            _selectedAnswer = null;
+            _answered = false;
+          });
+          _animController.reset();
+          _animController.forward();
+        }
       } else {
-        _finishQuiz();
+        if (mounted) {
+          _finishQuiz();
+        }
       }
     });
   }
@@ -110,9 +205,12 @@ class _QuizScreenState extends State<QuizScreen>
   @override
   Widget build(BuildContext context) {
     if (_finished) return _buildResultScreen(context);
+    if (_questionsList.isEmpty) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-    final q = widget.questions[_currentQuestion];
-    final progress = widget.questions.isEmpty ? 0.0 : (_currentQuestion + 1) / widget.questions.length;
+    final q = _questionsList[_currentQuestion];
+    final progress = _questionsList.isEmpty ? 0.0 : (_currentQuestion + 1) / _questionsList.length;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -135,7 +233,7 @@ class _QuizScreenState extends State<QuizScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      "${_currentQuestion + 1} / ${widget.questions.length}",
+                      "${_currentQuestion + 1} / ${_questionsList.length}",
                       style: const TextStyle(
                           color: Colors.white70, fontWeight: FontWeight.w600),
                     ),
@@ -289,7 +387,7 @@ class _QuizScreenState extends State<QuizScreen>
   }
 
   Widget _buildResultScreen(BuildContext context) {
-    final total = widget.questions.length;
+    final total = _questionsList.length;
     final earned = _score * 10;
     final percent = total > 0 ? (_score / total * 100).round() : 0;
     final passed = percent >= 60;
@@ -366,12 +464,14 @@ class _QuizScreenState extends State<QuizScreen>
               TextButton.icon(
                 onPressed: () {
                   setState(() {
+                    _loadQuestions();
                     _currentQuestion = 0;
                     _selectedAnswer = null;
                     _answered = false;
                     _score = 0;
                     _finished = false;
                   });
+                  _animController.reset();
                   _animController.forward();
                 },
                 icon: const Icon(Icons.refresh_rounded),

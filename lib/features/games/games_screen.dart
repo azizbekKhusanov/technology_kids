@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
+import 'matching_game_screen.dart';
+import 'puzzle_game_screen.dart';
+import 'ordering_game_screen.dart';
+import 'word_game_screen.dart';
+import '../quiz/quiz_screen.dart';
 
 class GamesScreen extends StatelessWidget {
   const GamesScreen({super.key});
@@ -79,15 +84,29 @@ class GamesScreen extends StatelessWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              "${game['title']} o'yini tez orada qo'shiladi!"),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          backgroundColor: AppTheme.primaryColor,
-                        ),
+                      final String title = game['title'] as String;
+                      Widget targetScreen;
+                      if (title == 'Moslashtirish') {
+                        targetScreen = const MatchingGameScreen();
+                      } else if (title == 'Puzzle') {
+                        targetScreen = const PuzzleGameScreen();
+                      } else if (title == 'Tartiblash') {
+                        targetScreen = const OrderingGameScreen();
+                      } else if (title == 'So\'zlar o\'yini') {
+                        targetScreen = const WordGameScreen();
+                      } else if (title == 'Test') {
+                        final List<QuizQuestion> randomQuestions = List<QuizQuestion>.from(_allQuestions)..shuffle();
+                        targetScreen = QuizScreen(
+                          lessonTitle: "Texnologiya Asoslari",
+                          questions: randomQuestions.take(5).toList(),
+                        );
+                      } else {
+                        return;
+                      }
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => targetScreen),
                       );
                     },
                     child: Padding(
@@ -155,4 +174,82 @@ class GamesScreen extends StatelessWidget {
       ),
     );
   }
+
+  static const List<QuizQuestion> _allQuestions = [
+    QuizQuestion(
+      question: "Origami nima?",
+      options: ["Qog'ozni buklash san'ati", "Loydan shakl yasash", "Yog'och o'ymakorligi", "Ip bilan to'qish"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Plastilin bilan ishlashda qaysi asbob ishlatiladi?",
+      options: ["Qaychi", "Loy pichog'i (Stek)", "Igna", "Randa"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Tabiiy materiallar guruhiga nimalar kiradi?",
+      options: ["Plastmassa va oyna", "Quruq barglar va toshlar", "Rangli qog'oz va karton", "Sintetik iplar"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Qog'ozni bir-biriga yopishtirish uchun nima kerak?",
+      options: ["Randa", "Yelim (kley)", "Igna", "Sim"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Tikuvchilikda barmoqni igna sanchilishidan nima himoya qiladi?",
+      options: ["Qaychi", "Angishvona", "Andoza", "Ip"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Yog'och yuzasini silliq qilish uchun nima ishlatiladi?",
+      options: ["Bolg'a", "Randa va sumbada qog'oz", "Pichoq", "Yelim"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Qog'oz birinchi marta qayerda kashf etilgan?",
+      options: ["Qadimgi Xitoyda", "Misrda", "Rimda", "Samarqandda"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Applikatsiya nima?",
+      options: ["Yog'och chopish", "Har xil shakllarni qog'ozga yopishtirish", "Loy pishirish", "Qo'shiq kuylash"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Ignaga ip o'tkazishda qaysi xavfsizlik qoidasiga amal qilinadi?",
+      options: ["Ignani og'izga solmaslik kerak", "Ignani yerga tashlash kerak", "Ignani do'stimizga otish kerak", "Ignasiz tikish kerak"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Plastilindan shakl yasash qanday ataladi?",
+      options: ["Tikish", "Loy ishlari / Plastilin haykaltaroshligi", "Bichish", "Duradgorlik"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Qaychi bilan ishlashda eng muhim qoida nima?",
+      options: ["Uni faqat dasta qismidan ushlab uzatish", "Uni havoda o'ynatish", "Uni og'izga solish", "Uni o'tkir tomoni bilan otish"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Origami san'ati dastlab qaysi mamlakatda keng rivojlangan?",
+      options: ["Yaponiya", "Germaniya", "Angliya", "Braziliya"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Qog'oz va karton o'rtasidagi farq nima?",
+      options: ["Karton qalinroq va qattiqroq", "Qog'oz og'irroq", "Ularning farqi yo'q", "Karton faqat yashil bo'ladi"],
+      correctIndex: 0,
+    ),
+    QuizQuestion(
+      question: "Duradgor kim?",
+      options: ["Kiyim tikadigan usta", "Yog'ochdan buyumlar yasaydigan usta", "Rasm chizadigan rassom", "Non yopadigan novvoy"],
+      correctIndex: 1,
+    ),
+    QuizQuestion(
+      question: "Yelim bilan ishlagandan keyin nima qilish kerak?",
+      options: ["Qo'lni yuvish va elim qopqog'ini yopish", "Elimni ochiq qoldirish", "Qo'lni kiyimga surtish", "Elimni tatib ko'rish"],
+      correctIndex: 0,
+    ),
+  ];
 }
