@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_theme.dart';
 import '../../models/lesson_model.dart';
 import '../quiz/quiz_screen.dart';
@@ -14,66 +13,33 @@ class LessonDetailScreen extends StatefulWidget {
 
 class _LessonDetailScreenState extends State<LessonDetailScreen> {
   int _currentStep = 0;
-  VideoPlayerController? _videoController;
-  bool _isLoadingVideo = false;
-  bool _videoReady = false;
-  String? _errorMessage;
 
-  @override
-  void dispose() {
-    _videoController?.dispose();
-    super.dispose();
-  }
-
-  String _extractVideoId(String url) {
-    url = url.trim();
-    if (url.isEmpty) return '';
-    final regExp = RegExp(
-      r'.*(?:(?:youtu\.be\/|v\/|vi\/|u\/\w\/|embed\/|shorts\/)|(?:(?:watch)?\?v(?:i)?=|\&v(?:i)?=))([^#\&\?]*).*',
-      caseSensitive: false,
-    );
-    final match = regExp.firstMatch(url);
-    if (match != null && match.groupCount >= 1) {
-      final id = match.group(1)!;
-      return id.length > 11 ? id.substring(0, 11) : id;
-    }
-    return '';
-  }
-
-  Future<void> _loadAndPlayVideo() async {
-    if (_isLoadingVideo) return;
-    setState(() {
-      _isLoadingVideo = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final videoId = _extractVideoId(widget.lesson.videoUrl);
-      if (videoId.isEmpty) throw Exception('Video ID topilmadi');
-
-      final yt = YoutubeExplode();
-      final manifest = await yt.videos.streamsClient.getManifest(videoId);
-      final streamInfo = manifest.muxed.withHighestBitrate();
-      final videoUrl = streamInfo.url.toString();
-      yt.close();
-
-      final controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
-      await controller.initialize();
-      controller.play();
-
+  Future<void> _launchVideo() async {
+    final videoUrl = widget.lesson.videoUrl.trim();
+    if (videoUrl.isEmpty) {
       if (mounted) {
-        setState(() {
-          _videoController = controller;
-          _videoReady = true;
-          _isLoadingVideo = false;
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Video havola mavjud emas')),
+        );
+      }
+      return;
+    }
+    
+    final uri = Uri.parse(videoUrl);
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        // Fallback to standard platform launch
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoadingVideo = false;
-          _errorMessage = 'Video yuklanmadi. Internet aloqasini tekshiring.';
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Videoni ochib bo\'lmadi')),
+        );
       }
     }
   }
@@ -209,158 +175,163 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(24),
+          // Premium Clickable Video Card
+          GestureDetector(
+            onTap: _launchVideo,
             child: Container(
               width: double.infinity,
               height: 240,
-              color: Colors.black,
-              child: _videoReady && _videoController != null
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        AspectRatio(
-                          aspectRatio: _videoController!.value.aspectRatio,
-                          child: VideoPlayer(_videoController!),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 15,
+                    offset: Offset(0, 8),
+                  )
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (widget.lesson.thumbnailUrl.isNotEmpty)
+                      Positioned.fill(
+                        child: Image.network(
+                          widget.lesson.thumbnailUrl,
+                          fit: BoxFit.cover,
                         ),
-                        // Play/Pause toggle
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _videoController!.value.isPlaying
-                                  ? _videoController!.pause()
-                                  : _videoController!.play();
-                            });
-                          },
-                          child: Container(
-                            color: Colors.transparent,
-                            child: Center(
-                              child: AnimatedOpacity(
-                                opacity: _videoController!.value.isPlaying ? 0.0 : 1.0,
-                                duration: const Duration(milliseconds: 300),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.black54,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.play_arrow_rounded,
-                                      color: Colors.white, size: 48),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Progress bar at bottom
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: VideoProgressIndicator(
-                            _videoController!,
-                            allowScrubbing: true,
-                            colors: const VideoProgressColors(
-                              playedColor: Colors.red,
-                              bufferedColor: Colors.white38,
-                              backgroundColor: Colors.white12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : _isLoadingVideo
-                      ? const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(color: Colors.white),
-                              SizedBox(height: 12),
-                              Text('Video yuklanmoqda...',
-                                  style: TextStyle(color: Colors.white70, fontSize: 14)),
-                            ],
-                          ),
-                        )
-                      : _errorMessage != null
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.error_outline, color: Colors.red, size: 40),
-                                  const SizedBox(height: 8),
-                                  Text(_errorMessage!,
-                                      style: const TextStyle(color: Colors.white70, fontSize: 13),
-                                      textAlign: TextAlign.center),
-                                ],
-                              ),
-                            )
-                          : Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                if (widget.lesson.thumbnailUrl.isNotEmpty)
-                                  Positioned.fill(
-                                    child: Image.network(
-                                      widget.lesson.thumbnailUrl,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                else
-                                  Container(color: Colors.black26),
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20)],
-                                  ),
-                                  child: const Icon(Icons.play_arrow_rounded,
-                                      color: Colors.red, size: 50),
-                                ),
+                      )
+                    else
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppTheme.primaryColor.withValues(alpha: 0.8),
+                                AppTheme.primaryColor,
                               ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
+                          ),
+                        ),
+                      ),
+                    // Dark glassmorphic overlay
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    // Play Icon
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 20,
+                            offset: Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.red,
+                        size: 54,
+                      ),
+                    ),
+                    // Click to watch text overlay
+                    Positioned(
+                      bottom: 20,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.touch_app_rounded, color: Colors.white, size: 16),
+                            SizedBox(width: 6),
+                            Text(
+                              "Videoni tomosha qilish uchun bosing",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 24),
-          Text(widget.lesson.title,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 28),
+          Text(
+            widget.lesson.title,
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
-          Text(widget.lesson.category,
-              style: TextStyle(
-                  color: AppTheme.primaryColor, fontWeight: FontWeight.w600)),
+          Text(
+            widget.lesson.category,
+            style: TextStyle(
+              color: AppTheme.primaryColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
           const SizedBox(height: 20),
-          Text(widget.lesson.description,
-              style: const TextStyle(fontSize: 16, height: 1.5, color: Colors.black87)),
+          Text(
+            widget.lesson.description,
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.6,
+              color: Colors.black87,
+            ),
+          ),
           const SizedBox(height: 40),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 60),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 4,
             ),
-            onPressed: _isLoadingVideo ? null : _loadAndPlayVideo,
-            icon: _isLoadingVideo
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2),
-                  )
-                : const Icon(Icons.play_circle_fill),
-            label: Text(
-              _isLoadingVideo ? 'Yuklanmoqda...' : "Videoni Ko'rish",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            onPressed: _launchVideo,
+            icon: const Icon(Icons.play_circle_fill, size: 24),
+            label: const Text(
+              "Videoni Ko'rish",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 60),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              side: BorderSide(color: AppTheme.primaryColor, width: 2),
             ),
             onPressed: () => _showCompletionDialog(context),
             icon: const Icon(Icons.check_circle_rounded),
-            label: const Text('Darsni tugatdim', style: TextStyle(fontSize: 16)),
+            label: const Text(
+              'Darsni tugatdim',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
