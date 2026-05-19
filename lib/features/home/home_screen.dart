@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
 import '../../core/app_theme.dart';
 import '../../models/lesson_model.dart';
 import '../lessons/lesson_detail_screen.dart';
@@ -32,6 +34,138 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchUserData();
+  }
+
+  Future<void> _pickAndUploadArtwork() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 1080,
+        maxHeight: 1080,
+      );
+
+      if (pickedFile == null) return;
+
+      final bytes = await pickedFile.readAsBytes();
+      final base64String = base64Encode(bytes);
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          bool isUploading = false;
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                title: const Text(
+                  "Rasm yuklash",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Ushbu rasmni ko'rgazmaga yuklamoqchimisiz?",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        height: 180,
+                        width: double.infinity,
+                        color: Colors.grey.shade100,
+                        child: Image.memory(bytes, fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Ism: $_userName\nSinf: $_userGrade-sinf",
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: isUploading ? null : () => Navigator.pop(context),
+                    child: const Text("Bekor qilish", style: TextStyle(color: Colors.grey)),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: isUploading
+                        ? null
+                        : () async {
+                            setDialogState(() => isUploading = true);
+                            try {
+                              await FirebaseFirestore.instance.collection('artworks').add({
+                                'userId': FirebaseAuth.instance.currentUser?.uid ?? '',
+                                'userName': _userName,
+                                'grade': _userGrade,
+                                'imageBase64': base64String,
+                                'likes': 0,
+                                'likedBy': [],
+                                'status': 'pending',
+                                'createdAt': FieldValue.serverTimestamp(),
+                              });
+
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      "Muvaffaqiyatli yuklandi! Admin tasdiqlaganidan so'ng ko'rgazmada paydo bo'ladi.",
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    backgroundColor: AppTheme.successColor,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Yuklashda xatolik: $e"),
+                                    backgroundColor: Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    child: isUploading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text("Yuklash"),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Galereyani ochishda xatolik: $e")),
+      );
+    }
   }
 
   Future<void> _fetchUserData() async {
@@ -898,12 +1032,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(24),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ExhibitionScreen()),
-                  );
-                },
+                onTap: _pickAndUploadArtwork,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
