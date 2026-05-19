@@ -5,7 +5,8 @@ import '../../../models/lesson_model.dart';
 import 'dart:math';
 
 class AddLessonScreen extends StatefulWidget {
-  const AddLessonScreen({super.key});
+  final LessonModel? lessonToEdit;
+  const AddLessonScreen({super.key, this.lessonToEdit});
 
   @override
   State<AddLessonScreen> createState() => _AddLessonScreenState();
@@ -18,18 +19,58 @@ class _AddLessonScreenState extends State<AddLessonScreen> {
   final _descController = TextEditingController();
   final _categoryController = TextEditingController();
   final _thumbnailController = TextEditingController();
-  final _videoUrlController = TextEditingController(); // Yangi
+  final _videoUrlController = TextEditingController();
 
   int _selectedGrade = 1;
   LessonType _selectedType = LessonType.interactive;
 
   // Qadamlar ro'yxati
-  final List<_StepData> _steps = [_StepData()];
+  final List<_StepData> _steps = [];
   
   // Savollar ro'yxati
   final List<_QuestionData> _questions = [];
 
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.lessonToEdit != null) {
+      final lesson = widget.lessonToEdit!;
+      _titleController.text = lesson.title;
+      _descController.text = lesson.description;
+      _categoryController.text = lesson.category;
+      _thumbnailController.text = lesson.thumbnailUrl;
+      _videoUrlController.text = lesson.videoUrl;
+      _selectedGrade = lesson.grade;
+      _selectedType = lesson.type;
+
+      // Populate steps
+      for (var step in lesson.steps) {
+        final stepData = _StepData();
+        stepData.titleController.text = step.title;
+        stepData.contentController.text = step.content;
+        stepData.imageController.text = step.imageUrl;
+        _steps.add(stepData);
+      }
+
+      // Populate questions
+      for (var q in lesson.questions) {
+        final qData = _QuestionData();
+        qData.questionController.text = q.question;
+        qData.optA.text = q.options.isNotEmpty ? q.options[0] : '';
+        qData.optB.text = q.options.length > 1 ? q.options[1] : '';
+        qData.optC.text = q.options.length > 2 ? q.options[2] : '';
+        qData.optD.text = q.options.length > 3 ? q.options[3] : '';
+        qData.correctIndex = q.correctIndex;
+        _questions.add(qData);
+      }
+    }
+
+    if (_steps.isEmpty) {
+      _steps.add(_StepData());
+    }
+  }
 
   void _addStep() {
     setState(() => _steps.add(_StepData()));
@@ -71,27 +112,29 @@ class _AddLessonScreenState extends State<AddLessonScreen> {
         correctIndex: q.correctIndex,
       )).toList();
 
-      final String newId = "lesson_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000)}";
+      final String docId = widget.lessonToEdit != null 
+          ? widget.lessonToEdit!.id 
+          : "lesson_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000)}";
 
       final lesson = LessonModel(
-        id: newId,
+        id: docId,
         title: _titleController.text.trim(),
         description: _descController.text.trim(),
         grade: _selectedGrade,
         category: _categoryController.text.trim(),
         thumbnailUrl: _thumbnailController.text.trim(),
-        videoUrl: _videoUrlController.text.trim(), // Yangi
+        videoUrl: _videoUrlController.text.trim(),
         steps: stepModels,
         questions: questionModels,
         type: _selectedType,
       );
 
-      await FirebaseFirestore.instance.collection('lessons').doc(newId).set(lesson.toMap());
+      await FirebaseFirestore.instance.collection('lessons').doc(docId).set(lesson.toMap());
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Yangi dars va test muvaffaqiyatli saqlandi! 🎉"),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(widget.lessonToEdit != null ? "Dars muvaffaqiyatli tahrirlandi! 📝" : "Yangi dars va test muvaffaqiyatli saqlandi! 🎉"),
           backgroundColor: Colors.green,
         ));
       }
@@ -103,10 +146,12 @@ class _AddLessonScreenState extends State<AddLessonScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.lessonToEdit != null;
+    
     return Scaffold(
       backgroundColor: Colors.blueGrey.shade50,
       appBar: AppBar(
-        title: const Text("Yangi Dars Qo'shish", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(isEditing ? "Darsni Tahrirlash" : "Yangi Dars Qo'shish", style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 1,
@@ -287,7 +332,7 @@ class _AddLessonScreenState extends State<AddLessonScreen> {
           ),
           onPressed: _saveLesson,
           icon: const Icon(Icons.cloud_upload),
-          label: const Text("Darsni Nashr Qilish (Saqlash)", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          label: Text(isEditing ? "O'zgarishlarni Saqlash" : "Darsni Nashr Qilish (Saqlash)", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );

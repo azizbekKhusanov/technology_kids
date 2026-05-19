@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../../core/app_theme.dart';
 import '../../models/lesson_model.dart';
 import '../quiz/quiz_screen.dart';
@@ -16,26 +16,13 @@ class LessonDetailScreen extends StatefulWidget {
 class _LessonDetailScreenState extends State<LessonDetailScreen> {
   int _currentStep = 0;
   bool _playVideo = false;
-  YoutubePlayerController? _ytController; // Nullable qildik
+  String _videoId = '';
 
   @override
   void initState() {
     super.initState();
     if (widget.lesson.type == LessonType.video && widget.lesson.videoUrl.isNotEmpty) {
-      final videoId = _extractVideoId(widget.lesson.videoUrl);
-      if (videoId.isNotEmpty) {
-        _ytController = YoutubePlayerController.fromVideoId(
-          videoId: videoId,
-          autoPlay: true,
-          params: const YoutubePlayerParams(
-            showFullscreenButton: true,
-            mute: false,
-            showControls: true,
-            enableJavaScript: true,
-            origin: 'https://www.youtube.com',
-          ),
-        );
-      }
+      _videoId = _extractVideoId(widget.lesson.videoUrl);
     }
   }
 
@@ -55,11 +42,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     return "";
   }
 
-  @override
-  void dispose() {
-    _ytController?.close();
-    super.dispose();
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -223,8 +206,25 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                 color: Colors.black,
                 boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
               ),
-              child: _playVideo && _ytController != null
-                ? YoutubePlayer(controller: _ytController!)
+              child: _playVideo && _videoId.isNotEmpty
+                ? InAppWebView(
+                    initialUrlRequest: URLRequest(
+                      url: WebUri(
+                        'https://www.youtube.com/embed/$_videoId?autoplay=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1',
+                      ),
+                    ),
+                    initialSettings: InAppWebViewSettings(
+                      javaScriptEnabled: true,
+                      mediaPlaybackRequiresUserGesture: false,
+                      allowsInlineMediaPlayback: true,
+                      useWideViewPort: true,
+                      loadWithOverviewMode: true,
+                      userAgent:
+                        'Mozilla/5.0 (Linux; Android 13; Pixel 7) '
+                        'AppleWebKit/537.36 (KHTML, like Gecko) '
+                        'Chrome/120.0.0.0 Mobile Safari/537.36',
+                    ),
+                  )
                 : Stack(
                     alignment: Alignment.center,
                     children: [

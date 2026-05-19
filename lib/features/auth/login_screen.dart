@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/app_theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/admin_logger.dart';
 import 'register_screen.dart';
 import '../admin/admin_panel_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,14 +32,55 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if (username == "munisa_admin_04" && pin == "0101") {
-      final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
+    final savedAdminUser = prefs.getString('adminUsername') ?? 'munisa_admin_04';
+    final savedAdminPin = prefs.getString('adminPin') ?? '0101';
+
+    if (username == savedAdminUser && pin == savedAdminPin) {
       await prefs.setBool('isAdmin', true);
+      await AdminLogger.log(
+        actionType: 'login',
+        description: 'Admin tizimga muvaffaqiyatli kirdi',
+      );
       if (mounted) {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminPanelScreen()));
       }
       return;
     }
+
+    // Check Firestore admins collection
+    setState(() => _isLoading = true);
+    try {
+      final adminQuery = await FirebaseFirestore.instance
+          .collection('admins')
+          .where('username', isEqualTo: username)
+          .where('pin', isEqualTo: pin)
+          .limit(1)
+          .get();
+
+      if (adminQuery.docs.isNotEmpty) {
+        final adminData = adminQuery.docs.first.data();
+        await prefs.setBool('isAdmin', true);
+        await prefs.setString('adminUsername', username);
+        await prefs.setString('adminFullName', adminData['fullName'] ?? username);
+        await prefs.setString('adminPhone', adminData['phone'] ?? '');
+        await prefs.setString('adminPin', pin);
+
+        await AdminLogger.log(
+          actionType: 'login',
+          description: "Admin (@$username) tizimga muvaffaqiyatli kirdi",
+        );
+        setState(() => _isLoading = false);
+
+        if (mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminPanelScreen()));
+        }
+        return;
+      }
+    } catch (e) {
+      debugPrint("Admin Firestore login error: $e");
+    }
+    setState(() => _isLoading = false);
 
     setState(() => _isLoading = true);
 

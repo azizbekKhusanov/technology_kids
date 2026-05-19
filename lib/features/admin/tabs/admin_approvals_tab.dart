@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
+import '../../../services/admin_logger.dart';
 import '../../workshop/drawing_models.dart';
 
 class AdminApprovalsTab extends StatefulWidget {
@@ -14,9 +15,20 @@ class _AdminApprovalsTabState extends State<AdminApprovalsTab> {
 
   void _updateStatus(String docId, String newStatus) async {
     try {
+      final doc = await FirebaseFirestore.instance.collection('artworks').doc(docId).get();
+      final data = doc.data() as Map<String, dynamic>?;
+      final author = data?['userName'] ?? "Noma'lum O'quvchi";
+      final title = data?['title'] ?? "Mening ijodiy ishim";
+      final statusLabel = newStatus == 'approved' ? "tasdiqladi" : "rad etdi";
+
       await FirebaseFirestore.instance.collection('artworks').doc(docId).update({
         'status': newStatus
       });
+
+      await AdminLogger.log(
+        actionType: newStatus == 'approved' ? 'artwork_approved' : 'artwork_rejected',
+        description: "$author'ning '$title' nomli rasmini $statusLabel",
+      );
     } catch(e) {
       debugPrint("Moderatsiya o'zgartirishda xato: $e");
     }
